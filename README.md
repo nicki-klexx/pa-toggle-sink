@@ -1,5 +1,5 @@
 # pa-toggle-sink
-A little script to toggle the sink of any audio stream.
+A little script to toggle the sink of any audio stream using PulseAudio.
 
 Assign a keyboard shortcut to this script and you can easily toggle between different soundcards.
 
