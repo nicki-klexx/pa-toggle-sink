@@ -1,22 +1,54 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-INPUT=$(
-	pacmd list-sink-inputs | 
-		xargs | 
-		sed 's/index: /\n/g' | 
-		grep "application.process.id = $(
-			xprop | 
-			egrep "^_NET_WM_PID" | 
-			cut -d " " -f3
-		)" | 
-		sed 's/^\([0-9]*\).*sink: \([0-9]*\).*/\1 \2/'
+function get_pid() {
+	grep -x google-chrome <<<${CLASSES} > /dev/null && {
+		PID=$(
+			ps u -C chrome |
+			grep "\-\-service-sandbox-type=audio" |
+			column -t -o " " |
+			cut -d " " -f2
+		)
+
+		return
+	}
+
+	PID=$(
+		egrep "^_NET_WM_PID" <<<${WINDOW} |
+		cut -d " " -f3
+	)
+}
+
+function move_sink_input() {
+	INPUT_ID=$(cut -d "-" -f1 <<<${INPUT})
+	SINK_ID=$(cut -d "-" -f2 <<<${INPUT})
+
+	echo ${SINK_ID}
+
+	NEW_SINK_ID=$[SINK_ID+1]
+
+	[[ "$NEW_SINK_ID" -gt "$(pactl list short sinks | tail -n1 | cut -f1)" ]] && NEW_SINK_ID=0
+
+	pacmd move-sink-input ${INPUT_ID} ${NEW_SINK_ID}
+}
+
+PID=0
+
+WINDOW=$(xprop)
+CLASSES=$(grep WM_CLASS <<<${WINDOW} | sed -e 's/.*=\(.*\)$/\1/' -e 's/[",]//g' | xargs -n1)
+
+get_pid
+
+INPUTS=$(
+	pacmd list-sink-inputs |
+		sed 's/\\"//g' |
+		xargs |
+		sed 's/index: /\n/g' |
+		grep "application.process.id = $PID" |
+		sed 's/^\([0-9]*\).*sink: \([0-9]*\).*/\1-\2/'
 )
 
-INPUT_ID=$(cut -d " " -f1 <<<$INPUT)
-SINK_ID=$(cut -d " " -f2 <<<$INPUT)
+echo -e "${INPUTS}"
 
-NEW_SINK_ID=$[SINK_ID+1]
-
-[ "$NEW_SINK_ID" -gt "$(pactl list short sinks | tail -n1 | cut -f1)" ] && NEW_SINK_ID=0
-
-pacmd move-sink-input $INPUT_ID $NEW_SINK_ID
+for INPUT in ${INPUTS}
+	do move_sink_input
+done
