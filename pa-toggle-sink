@@ -47,8 +47,6 @@ INPUTS=$(
 		sed 's/^\([0-9]*\).*sink: \([0-9]*\).*/\1-\2/'
 )
 
-echo -e "${INPUTS}"
-
 for INPUT in ${INPUTS}
 	do move_sink_input
 done
